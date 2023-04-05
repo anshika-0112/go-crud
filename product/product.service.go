@@ -8,21 +8,11 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
-	"time"
 
 	"github.com/anshika-0112/go-crud/cors"
 )
 
 const productsPath = "products"
-
-func middlewareHandler(handler http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		fmt.Println("before handler; middleware start")
-		start := time.Now()
-		handler.ServeHTTP(w, r)
-		fmt.Printf("middleware finished; %s", time.Since(start))
-	})
-}
 
 func handleProduct(w http.ResponseWriter, r *http.Request) {
 	urlPathSegments := strings.Split(r.URL.Path, "products/")
@@ -32,13 +22,13 @@ func handleProduct(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusNotFound)
 		return
 	}
-	product := getProduct(productID)
+	product, _ := getProduct(productID)
 	if product == nil {
 		http.Error(w, fmt.Sprintf("no product with id %d", productID), http.StatusNotFound)
 	}
 	switch r.Method {
 	case http.MethodGet:
-		product := getProduct(productID)
+		product, _ := getProduct(productID)
 		if product == nil {
 			w.WriteHeader(http.StatusNotFound)
 			return
@@ -66,7 +56,7 @@ func handleProduct(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusBadRequest)
 			return
 		}
-		_, err = addOrUpdateProduct(product)
+		err = updateProduct(product)
 		if err != nil {
 			log.Print(err)
 			w.WriteHeader(http.StatusBadRequest)
@@ -86,7 +76,11 @@ func handleProduct(w http.ResponseWriter, r *http.Request) {
 func handleProducts(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case http.MethodGet:
-		productList := getProductList()
+		productList, err := getProductList()
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
 		productJson, err := json.Marshal(productList)
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
@@ -108,7 +102,7 @@ func handleProducts(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusBadRequest)
 			return
 		}
-		_, err = addOrUpdateProduct(newProduct)
+		_, err = addProduct(newProduct)
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
 			return
